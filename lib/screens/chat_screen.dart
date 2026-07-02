@@ -10,6 +10,7 @@ import 'package:markdown_widget/markdown_widget.dart';
 import '../widgets/typing_indicator.dart';
 import '../widgets/model_selector_modal.dart';
 import '../widgets/voice_input_widget.dart';
+import '../widgets/sidebar.dart';
 import 'live_conversation_screen.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -29,6 +30,8 @@ class _ChatScreenState extends State<ChatScreen> {
   String _selectedModel = 'krypton';
   String _currentGreeting = "";
   bool _showCopyNotification = false;
+  String _selectedSidebarItem = 'chats';
+  bool _sidebarExpanded = false;
 
   final List<String> _greetings = [
     "Hi, what are we planning today?",
@@ -61,10 +64,27 @@ class _ChatScreenState extends State<ChatScreen> {
       }
       return KeyEventResult.ignored;
     });
+
+    // Global hardware-level listener for Ctrl + C to toggle the sidebar.
+    // Runs before any widget, so it works regardless of focus.
+    HardwareKeyboard.instance.addHandler(_handleGlobalKeyEvent);
+  }
+
+  bool _handleGlobalKeyEvent(KeyEvent event) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.keyC &&
+        HardwareKeyboard.instance.isControlPressed) {
+      setState(() {
+        _sidebarExpanded = !_sidebarExpanded;
+      });
+      return true; // Consume the event so it doesn't trigger copy elsewhere.
+    }
+    return false;
   }
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleGlobalKeyEvent);
     _focusNode.dispose();
     _textController.dispose();
     _scrollController.dispose();
@@ -339,24 +359,39 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(
-        title: Text(
-          '',
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: true,
-      ),
-      body: Column(
+      backgroundColor: const Color(0xFF111111),
+      body: Row(
         children: [
+          Sidebar(
+            selectedId: _selectedSidebarItem,
+            expanded: _sidebarExpanded,
+            onSettingsPressed: () => _showSettingsDialog(context),
+            onItemSelected: (id) {
+              setState(() {
+                _selectedSidebarItem = id;
+              });
+            },
+          ),
           Expanded(
-            child: Stack(
+            child: Scaffold(
+              backgroundColor: Theme.of(context).colorScheme.surface,
+              appBar: AppBar(
+                title: Text(
+                  '',
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                ),
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                scrolledUnderElevation: 0,
+                centerTitle: true,
+              ),
+              body: Column(
               children: [
-                Center(
-                  child: AnimatedOpacity(
+                Expanded(
+                  child: Stack(
+                    children: [
+                      Center(
+                        child: AnimatedOpacity(
                     opacity: _messages.isEmpty ? 1.0 : 0.0,
                     duration: const Duration(milliseconds: 500),
                     curve: Curves.easeOut,
@@ -610,7 +645,11 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ],
       ),
-    );
+    ),
+  ),
+  ],
+),
+);
   }
 
   void _showToolsMenu(BuildContext context) {
@@ -638,7 +677,7 @@ class _ChatScreenState extends State<ChatScreen> {
               icon: Icons.image_rounded,
               label: 'Generate Image',
               description: 'Create AI art from text',
-              color: Colors.purpleAccent,
+              color: Colors.white70,
               onTap: () {
                 Navigator.pop(context);
                 // TODO: Implement Image Gen
@@ -695,6 +734,65 @@ class _ChatScreenState extends State<ChatScreen> {
             const Spacer(),
             const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white30, size: 14),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showSettingsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black54,
+      builder: (context) => Dialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        insetPadding: const EdgeInsets.all(24),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 480, maxHeight: 520),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1A1A1A),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF2D2D2D)),
+          ),
+          child: Column(
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    const Icon(Icons.settings_rounded, color: Color(0xFFA3A3A3), size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Settings',
+                      style: GoogleFonts.inter(
+                        color: const Color(0xFFF5F5F5),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const Spacer(),
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: const Icon(Icons.close, color: Color(0xFFA3A3A3), size: 20),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: Color(0xFF2D2D2D)),
+              // Placeholder body
+              Expanded(
+                child: Center(
+                  child: Text(
+                    'Settings coming soon',
+                    style: GoogleFonts.inter(color: const Color(0xFFA3A3A3), fontSize: 14),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
