@@ -1,0 +1,10 @@
+{
+  "name": "elysium",
+  "displayName": "E.L.Y.S.I.U.M",
+  "expo": {
+    "name": "E.L.Y.S.I.U.M",
+    "slug": "elysium-mobile",
+    "sdkVersion": "52.0.0",
+    "platforms": ["android", "web"]
+  }
+}
